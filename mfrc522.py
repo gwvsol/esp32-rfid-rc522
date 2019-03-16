@@ -2,9 +2,6 @@
 # https://github.com/gwvsol/ESP32-RFID-RC522
 #
 
-from machine import Pin
-
-
 class MFRC522:
 
     OK          = 0
@@ -18,7 +15,6 @@ class MFRC522:
 
 
     def __init__(self, spi, rst, cs):
-
         self.spi    = spi
         self.rst    = rst
         self.cs     = cs
@@ -113,7 +109,6 @@ class MFRC522:
 
 
     def _crc(self, data):
-
         self._cflags(0x05, 0x04)
         self._sflags(0x0A, 0x80)
 
@@ -147,7 +142,6 @@ class MFRC522:
 
 
     def antenna_on(self, on=True):
-
         if on and ~(self._rreg(0x14) & 0x03):
             self._sflags(0x14, 0x03)
         else:
@@ -155,7 +149,6 @@ class MFRC522:
 
 
     def request(self, mode):
-
         self._wreg(0x0D, 0x07)
         (stat, recv, bits) = self._tocard(0x0C, [mode])
 
@@ -197,7 +190,6 @@ class MFRC522:
 
 
     def read(self, addr):
-
         data = [0x30, addr]
         data += self._crc(data)
         (stat, recv, _) = self._tocard(0x0C, data)
@@ -220,3 +212,24 @@ class MFRC522:
             if not (stat == self.OK) or not (bits == 4) or not ((recv[0] & 0x0F) == 0x0A):
                 stat = self.ERR
         return stat
+        
+    def read_card(self):
+        (stat, tag_type) = self.request(self.REQIDL)
+        if stat == self.OK:
+            (stat, raw_uid) = self.anticoll()
+            if stat == self.OK:
+                #print('############ RFID #############')
+                #print('New card detected')
+                #print('RFID:    tag type: {:#x}'.format(tag_type))
+                #print('RFID:    uid     : {:d}{:d}{:d}{:d}'.format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3]))
+                #print('RFID:    dig uid : {:0>3d} {:0>3d} {:0>3d} {:0>3d}'.format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3]))
+                #print('RFID:    hex uid : 0x{:0>2x}{:0>2x}{:0>2x}{:0>2x}'.format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3]))
+                #print('#################################')
+                if self.select_tag(raw_uid) == self.OK:
+                    key = [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]
+                    if self.auth(self.AUTHENT1A, 8, key, raw_uid) == self.OK:
+                        #print('Address 8 data: {}'.format(self.read(8)))
+                        self.stop_crypto1()
+                        return int('{}{}{}{}'.format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3]))
+        return None
+
