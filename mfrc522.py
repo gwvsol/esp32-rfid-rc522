@@ -218,18 +218,31 @@ class MFRC522:
         if stat == self.OK:
             (stat, raw_uid) = self.anticoll()
             if stat == self.OK:
-                #print('############ RFID #############')
-                #print('New card detected')
-                #print('RFID:    tag type: {:#x}'.format(tag_type))
-                #print('RFID:    uid     : {:d}{:d}{:d}{:d}'.format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3]))
-                #print('RFID:    dig uid : {:0>3d} {:0>3d} {:0>3d} {:0>3d}'.format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3]))
-                #print('RFID:    hex uid : 0x{:0>2x}{:0>2x}{:0>2x}{:0>2x}'.format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3]))
-                #print('#################################')
                 if self.select_tag(raw_uid) == self.OK:
                     key = [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]
                     if self.auth(self.AUTHENT1A, 8, key, raw_uid) == self.OK:
+                        card = self.read(8)
                         #print('Address 8 data: {}'.format(self.read(8)))
                         self.stop_crypto1()
-                        return int('{}{}{}{}'.format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3]))
+                        return int('{}{}{}{}'.format(raw_uid[0], raw_uid[1], raw_uid[2], raw_uid[3])), card
         return None
+        
+    def write_card(self, data):
+        (stat, tag_type) = self.request(self.REQIDL)
+        if stat == self.OK:
+            (stat, raw_uid) = self.anticoll()
+            if stat == self.OK:
+                if self.select_tag(raw_uid) == self.OK:
+                    key = [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]
+                    if self.auth(self.AUTHENT1A, 8, key, raw_uid) == self.OK:
+                        stat = self.write(8, data)
+                        self.stop_crypto1()
+                        if stat == self.OK:
+                            print('Data written to card')
+                        else:
+                            print('Failed to write data to card')
+                    else:
+                        print('Authentication error')
+                else:
+                    print('Failed to select tag')
 
